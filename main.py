@@ -83,7 +83,7 @@ def main():
         global entry
         top = Toplevel(root, relief="groove", bd=4)
         top.overrideredirect(1)
-        top.wm_geometry('120x180+' + x + '+' + y)  # x,y+origin x+ origin y
+        top.wm_geometry('200x180+' + x + '+' + y)  # x,y+origin x+ origin y
 
         varRow = 3
         varColumn = 0
