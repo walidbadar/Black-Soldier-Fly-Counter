@@ -5,10 +5,10 @@ from pyzbar import pyzbar
 # import RPi.GPIO as GPIO
 import cv2, requests, shutil, time, serial, subprocess, fnmatch, uuid, random, binascii, datetime
 
-Machine = "COM4"
-# Machine= "/dev/ttyUSB0"
+# Machine = "COM4"
+Machine= "/dev/ttyUSB0"
 brate = "115200"
-sensor = serial.Serial(Machine, baudrate=brate, timeout=1)
+sensor = serial.Serial(Machine, baudrate=brate, timeout=0.01)
 # --------------------------------------------------------------
 # --------------------------------------------------------------
 # GPIO.setmode(GPIO.BCM)
