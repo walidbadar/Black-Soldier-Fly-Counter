@@ -1,15 +1,13 @@
 # import the necessary packages
-from Tkinter import *
-from tkinter import messagebox
+import threading
+from tkinter import *
 from pyzbar import pyzbar
-from tkFileDialog import askopenfilename
-
 # import RPi.GPIO as GPIO
-import argparse, cv2, requests, shutil, time, ttk, serial, sys, os, fnmatch, uuid, random, tkMessageBox, binascii
+import cv2, requests, shutil, time, serial, subprocess, fnmatch, uuid, random, binascii, datetime
 
 Machine = "COM4"
 # Machine= "/dev/ttyUSB0"
-brate = "9600"
+brate = "115200"
 sensor = serial.Serial(Machine, baudrate=brate, timeout=1)
 # --------------------------------------------------------------
 # --------------------------------------------------------------
@@ -19,7 +17,6 @@ sensor = serial.Serial(Machine, baudrate=brate, timeout=1)
 # GPIO.setup(26,#GPIO.oUT, initial = GPIO.LOW) #Sensor (I/O input)
 # --------------------------------------------------------------
 # --------------------------------------------------------------
-root1 = ''
 loveCageQRcode = 'LC1'
 darkCageQRcode = 'DC1'
 startFlag = 0
@@ -28,11 +25,39 @@ darkCageFlag = 0
 serialCallback = 0
 sec = 0
 
-url = "http://192.168.1.6:8080/shot.jpg"
+# url = "http://192.168.1.6:8080/shot.jpg"
 
+# --------------------------------------------------------------
+# Serial Data Thread
+# --------------------------------------------------------------
+def read_serial_packet():
+    print("Started ::")
+    while True:
+        if startFlag:
+            if not sensor.isOpen():
+                sensor.open()
+                sensor.write(b'B')
+            if sensor.inWaiting() > 6:
+                sensorData = sensor.read(7)
+                print("Time: ", datetime.datetime.now(), "Sensor: ", sensorData)
+
+                # seventhByte = int(binascii.hexlify(sensorData)[0:2], 16)
+                # sixthByte = int(binascii.hexlify(sensorData)[2:4], 16)
+                # fifthByte = int(binascii.hexlify(sensorData)[4:6], 16)
+                # fourthByte = int(binascii.hexlify(sensorData)[6:8], 16)
+                # thirdByte = int(binascii.hexlify(sensorData)[8:10], 16)
+                # secondByte = int(binascii.hexlify(sensorData)[10:12], 16)
+                # firstByte = int(binascii.hexlify(sensorData)[12:14], 16)
+                #
+                # print("Time: ", datetime.datetime.now(), "Sensor: ", firstByte, secondByte, thirdByte, fourthByte, fifthByte, sixthByte, seventhByte)
+                # if (seventhByte >= 128 and seventhByte <= 191) and (sixthByte >= 0 and sixthByte <= 127) and (fifthByte >= 0 and fifthByte <= 127) and (fourthByte >= 0 and fourthByte <= 127) and (thirdByte >= 0 and thirdByte <= 127) and (secondByte >= 0 and secondByte <= 127) and (firstByte >= 0 and firstByte <= 127):
+                #     print("Perfect Stream" )
+
+        else:
+            break
 
 def main():
-    global root, root1, entry, barcodeData
+    global root
 
     root = Tk()
     root.overrideredirect(0)
@@ -46,6 +71,12 @@ def main():
     # --------------------------------------------------------------
     Logophoto = PhotoImage(file="images/#eawag.gif")
     bgphoto = PhotoImage(file="images/bg.gif")
+
+    def flyCount(dividend):
+        if (dividend % 3) == 0:
+            return 1
+        else:
+            return 0
 
     def keypad(x, y):
         global root
@@ -146,13 +177,14 @@ def main():
             for newline in loveCageQRcodeData:
                 loveCageQRcodeData = newline.replace("\n", "")
                 newLoveCageQRcodeData.append(loveCageQRcodeData)
-            print (newLoveCageQRcodeData)
+            print(newLoveCageQRcodeData)
 
-            resp = requests.get(url, stream=True)
-            local_file = open('local_image.jpg', 'wb')
-            resp.raw.decode_content = True
-            shutil.copyfileobj(resp.raw, local_file)
+            # resp = requests.get(url, stream=True)
+            # local_file = open('local_image.jpg', 'wb')
+            # resp.raw.decode_content = True
+            # shutil.copyfileobj(resp.raw, local_file)
 
+            subprocess.call("raspstill -vf -o /home/pi/flyCounter/local_image.jpeg", shell=True)
             image = cv2.imread('local_image.jpg', 0)
             barcodes = pyzbar.decode(image)
 
@@ -160,7 +192,7 @@ def main():
                 (x, y, w, h) = barcode.rect
                 cv2.rectangle(image, (x, y), (x + w, y + h), (0, 0, 255), 2)
                 loveCageQRcode = barcode.data.decode("utf-8")
-                print (loveCageQRcode)
+                print(loveCageQRcode)
 
             if loveCageQRcode in newLoveCageQRcodeData:
                 loveCageFlag = 1
@@ -204,7 +236,7 @@ def main():
         for newline in settingsData:
             settingsData = newline.replace("\n", "")
             newSettingsData.append(settingsData)
-        print (newSettingsData)
+        print(newSettingsData)
 
         # --------------------------------------------------------------
         # Default Values
@@ -423,7 +455,7 @@ def main():
         for newline in settingsData:
             settingsData = newline.replace("\n", "")
             newSettingsData.append(settingsData)
-        print (newSettingsData)
+        print(newSettingsData)
 
         # --------------------------------------------------------------
         # Set Value
@@ -532,9 +564,9 @@ def main():
         # AGITATOR Button
         # --------------------------------------------------------------
         def AGITATOR():
-            print ("Shake Cage")
-            print (newSettingsData[4])
-            print (newSettingsData[5])
+            print("Shake Cage")
+            print(newSettingsData[4])
+            print(newSettingsData[5])
 
         agitiatorBtn = Button(startProcessWin, height=2, width=10, text="Shake\nCage", font='Arial 15 bold',
                               fg="White", bg='Black', relief=RAISED,
@@ -544,31 +576,16 @@ def main():
         # --------------------------------------------------------------
         # Serial Data to No. of Flies
         # --------------------------------------------------------------
-        def serialEvent():
-            global serialCallback
-            sensorData = sensor.read(size=3)
-
-            def flyCount(dividend):
-                if (dividend % 3) == 0:
-                    return 1
-                else:
-                    return 0
-
-            if sensorData != '':
-                firstByte = int(binascii.hexlify(sensorData)[0:2], 16)
-                secondByte = int(binascii.hexlify(sensorData)[3:4], 16)
-                thirdByte = int(binascii.hexlify(sensorData)[5:6], 16)
-                print [flyCount(firstByte), secondByte, thirdByte]
-            serialCallback = root.after(1, serialEvent)
 
         # --------------------------------------------------------------
         # Start Button
         # --------------------------------------------------------------
         def start():
             global startFlag
+            print("Start")
             startFlag = 1
-            print ("Start")
-            serialEvent()
+            threading.Thread(target=read_serial_packet).start()
+
             stopBtn = Button(startProcessWin, height=2, width=10, text="Stop", font='Arial 15 bold',
                              fg="Black", bg='Red', relief=RAISED,
                              command=lambda: stop())
@@ -585,8 +602,12 @@ def main():
         def stop():
             global serialCallback, startFlag
             startFlag = 0
-            print ("Stop")
-            root.after_cancel(serialCallback)
+            if not sensor.isOpen():
+                sensor.open()
+                sensor.write(b'0')
+                sensor.close()
+            print("Stop")
+
             startBtn = Button(startProcessWin, height=2, width=10, text="Start", font='Arial 15 bold',
                               fg="Black", bg='#75CC3D', relief=RAISED,
                               command=lambda: start())
@@ -634,13 +655,14 @@ def main():
                 for newline in darkCageQRcodeData:
                     darkCageQRcodeData = newline.replace("\n", "")
                     newDarkCageQRcodeData.append(darkCageQRcodeData)
-                print (newDarkCageQRcodeData)
+                print(newDarkCageQRcodeData)
 
-                resp = requests.get(url, stream=True)
-                local_file = open('local_image.jpg', 'wb')
-                resp.raw.decode_content = True
-                shutil.copyfileobj(resp.raw, local_file)
+                # resp = requests.get(url, stream=True)
+                # local_file = open('local_image.jpg', 'wb')
+                # resp.raw.decode_content = True
+                # shutil.copyfileobj(resp.raw, local_file)
 
+                subprocess.call("raspstill -vf -o /home/pi/flyCounter/local_image.jpeg", shell=True)
                 image = cv2.imread('local_image.jpg', 0)
                 barcodes = pyzbar.decode(image)
 
@@ -648,13 +670,13 @@ def main():
                     (x, y, w, h) = barcode.rect
                     cv2.rectangle(image, (x, y), (x + w, y + h), (0, 0, 255), 2)
                     darkCageQRcode = barcode.data.decode("utf-8")
-                    print (darkCageQRcode)
+                    print(darkCageQRcode)
 
                 if darkCageQRcode in newDarkCageQRcodeData:
                     darkCageFlag = 1
                     for darkCage in range(0, 4):
                         if newDarkCageQRcodeData[darkCage] == darkCageQRcode:
-                            print str(1 + darkCage)
+                            print(str(1 + darkCage))
                             scanDCstatusLb.configure(text="Dark Cage " + str(1 + darkCage) + " QR Code Detected")
 
                 else:
