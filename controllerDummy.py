@@ -1,9 +1,9 @@
 import serial, time
-x = 0
+
 Machine = "COM3"
 # Machine= "/dev/ttyUSB0"
 brate = "115200"
-serial = serial.Serial(Machine, baudrate=brate, timeout=0.001)
+serial = serial.Serial(Machine, baudrate=brate, timeout=0.01)
 
 while True:
     if serial.inWaiting() > 0:
@@ -11,13 +11,11 @@ while True:
         print(sensorData)
 
         while sensorData != b'0':
-            x=x+1
-            print(x)
             serial.write(b'\x80')
             serial.write(b'\x00')
             serial.write(b'\x00')
             serial.write(b'\x00')
             serial.write(b'\x00')
             serial.write(b'\x00')
-            serial.write(b'\x00')
+            serial.write(b'\x0C')
             sensorData = serial.read(1)
