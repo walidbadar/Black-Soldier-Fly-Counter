@@ -1,20 +1,21 @@
 # import the necessary packages
-import threading
 from tkinter import *
 from pyzbar import pyzbar
 # import RPi.GPIO as GPIO
-import cv2, requests, shutil, time, serial, subprocess, fnmatch, uuid, random, binascii, datetime
+import cv2, requests, shutil, time, serial, subprocess, fnmatch, uuid, random, binascii, datetime, threading
 
 # Machine = "COM4"
 Machine= "/dev/ttyUSB0"
 brate = "115200"
-sensor = serial.Serial(Machine, baudrate=brate, timeout=0.01)
+sensor = serial.Serial(Machine, baudrate=brate, timeout=0.001)
+
 # --------------------------------------------------------------
 # --------------------------------------------------------------
 # GPIO.setmode(GPIO.BCM)
 # GPIO.setwarnings(False)
 # GPIO.cleanup()
 # GPIO.setup(26,#GPIO.oUT, initial = GPIO.LOW) #Sensor (I/O input)
+
 # --------------------------------------------------------------
 # --------------------------------------------------------------
 loveCageQRcode = 'LC1'
@@ -39,19 +40,19 @@ def read_serial_packet():
                 sensor.write(b'B')
             if sensor.inWaiting() > 6:
                 sensorData = sensor.read(7)
-                print("Time: ", datetime.datetime.now(), "Sensor: ", sensorData)
+                # print("Time: ", datetime.datetime.now(), "Sensor: ", sensorData)
 
-                # seventhByte = int(binascii.hexlify(sensorData)[0:2], 16)
-                # sixthByte = int(binascii.hexlify(sensorData)[2:4], 16)
-                # fifthByte = int(binascii.hexlify(sensorData)[4:6], 16)
-                # fourthByte = int(binascii.hexlify(sensorData)[6:8], 16)
-                # thirdByte = int(binascii.hexlify(sensorData)[8:10], 16)
-                # secondByte = int(binascii.hexlify(sensorData)[10:12], 16)
-                # firstByte = int(binascii.hexlify(sensorData)[12:14], 16)
-                #
-                # print("Time: ", datetime.datetime.now(), "Sensor: ", firstByte, secondByte, thirdByte, fourthByte, fifthByte, sixthByte, seventhByte)
-                # if (seventhByte >= 128 and seventhByte <= 191) and (sixthByte >= 0 and sixthByte <= 127) and (fifthByte >= 0 and fifthByte <= 127) and (fourthByte >= 0 and fourthByte <= 127) and (thirdByte >= 0 and thirdByte <= 127) and (secondByte >= 0 and secondByte <= 127) and (firstByte >= 0 and firstByte <= 127):
-                #     print("Perfect Stream" )
+                seventhByte = int(binascii.hexlify(sensorData)[0:2], 16)
+                sixthByte = int(binascii.hexlify(sensorData)[2:4], 16)
+                fifthByte = int(binascii.hexlify(sensorData)[4:6], 16)
+                fourthByte = int(binascii.hexlify(sensorData)[6:8], 16)
+                thirdByte = int(binascii.hexlify(sensorData)[8:10], 16)
+                secondByte = int(binascii.hexlify(sensorData)[10:12], 16)
+                firstByte = int(binascii.hexlify(sensorData)[12:14], 16)
+
+                print("Time: ", datetime.datetime.now(), "Sensor: ", firstByte, secondByte, thirdByte, fourthByte, fifthByte, sixthByte, seventhByte)
+                if (seventhByte >= 128 and seventhByte <= 191) and (sixthByte >= 0 and sixthByte <= 127) and (fifthByte >= 0 and fifthByte <= 127) and (fourthByte >= 0 and fourthByte <= 127) and (thirdByte >= 0 and thirdByte <= 127) and (secondByte >= 0 and secondByte <= 127) and (firstByte >= 0 and firstByte <= 127):
+                    print("Perfect Stream")
 
         else:
             break
@@ -83,7 +84,7 @@ def main():
         global entry
         top = Toplevel(root, relief="groove", bd=4)
         top.overrideredirect(1)
-        top.wm_geometry('200x180+' + x + '+' + y)  # x,y+origin x+ origin y
+        top.wm_geometry('202x180+' + x + '+' + y)  # x,y+origin x+ origin y
 
         varRow = 3
         varColumn = 0
@@ -184,7 +185,7 @@ def main():
             # resp.raw.decode_content = True
             # shutil.copyfileobj(resp.raw, local_file)
 
-            subprocess.call("raspstill -vf -o /home/pi/flyCounter/local_image.jpeg", shell=True)
+            subprocess.call("raspstill -vf -o /home/pi/flyCounter/local_image.jpg", shell=True)
             image = cv2.imread('local_image.jpg', 0)
             barcodes = pyzbar.decode(image)
 
@@ -425,12 +426,10 @@ def main():
             shakingInterval = shakingIntervalTb.get()
             shakingDuration = shakingDurationTb.get()
 
-            if (
-                    fliesPerDarkCage != '' and timeLimit != '' and fliesPerTime != '' and fliesPerLoveCage != '' and noOfBeamsPerFly != '' and shakingInterval != '' and shakingDuration != ''):
+            if (fliesPerDarkCage != '' and timeLimit != '' and fliesPerTime != '' and fliesPerLoveCage != '' and noOfBeamsPerFly != '' and shakingInterval != '' and shakingDuration != ''):
                 settingFile = open("settings.txt", "w+")
                 settingFile.write(
                     fliesPerDarkCage + '\n' + timeLimit + '\n' + fliesPerTime + '\n' + fliesPerLoveCage + '\n' + noOfBeamsPerFly + '\n' + shakingInterval + '\n' + shakingDuration)
-                settingFile.close
             settinWin.destroy()
 
         backBtn = Button(settinWin, height=2, width=20, text="Back", font='Arial 15 bold',
@@ -662,7 +661,7 @@ def main():
                 # resp.raw.decode_content = True
                 # shutil.copyfileobj(resp.raw, local_file)
 
-                subprocess.call("raspstill -vf -o /home/pi/flyCounter/local_image.jpeg", shell=True)
+                subprocess.call("raspstill -vf -o /home/pi/flyCounter/local_image.jpg", shell=True)
                 image = cv2.imread('local_image.jpg', 0)
                 barcodes = pyzbar.decode(image)
 
@@ -773,7 +772,6 @@ def main():
 
     root.update()
     root.mainloop()
-
 
 if __name__ == "__main__":
     main()
