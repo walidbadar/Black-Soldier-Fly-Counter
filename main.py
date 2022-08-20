@@ -7,7 +7,7 @@ import cv2, requests, shutil, time, serial, subprocess, fnmatch, uuid, random, b
 # Machine = "COM4"
 Machine= "/dev/ttyUSB0"
 brate = "115200"
-sensor = serial.Serial(Machine, baudrate=brate, timeout=0.001)
+sensor = serial.Serial(Machine, baudrate=brate, timeout=0.01)
 
 # --------------------------------------------------------------
 # --------------------------------------------------------------
@@ -26,18 +26,20 @@ darkCageFlag = 0
 serialCallback = 0
 sec = 0
 
+
 # url = "http://192.168.1.6:8080/shot.jpg"
 
 # --------------------------------------------------------------
 # Serial Data Thread
 # --------------------------------------------------------------
 def read_serial_packet():
+    print(newSettingsData[4])
     print("Started ::")
+    if not sensor.isOpen():
+        sensor.open()
+    sensor.write(b'B')
     while True:
         if startFlag:
-            if not sensor.isOpen():
-                sensor.open()
-                sensor.write(b'B')
             if sensor.inWaiting() > 6:
                 sensorData = sensor.read(7)
                 # print("Time: ", datetime.datetime.now(), "Sensor: ", sensorData)
@@ -50,12 +52,18 @@ def read_serial_packet():
                 secondByte = int(binascii.hexlify(sensorData)[10:12], 16)
                 firstByte = int(binascii.hexlify(sensorData)[12:14], 16)
 
-                print("Time: ", datetime.datetime.now(), "Sensor: ", firstByte, secondByte, thirdByte, fourthByte, fifthByte, sixthByte, seventhByte)
-                if (seventhByte >= 128 and seventhByte <= 191) and (sixthByte >= 0 and sixthByte <= 127) and (fifthByte >= 0 and fifthByte <= 127) and (fourthByte >= 0 and fourthByte <= 127) and (thirdByte >= 0 and thirdByte <= 127) and (secondByte >= 0 and secondByte <= 127) and (firstByte >= 0 and firstByte <= 127):
+                print("Time: ", datetime.datetime.now(), "Sensor: ", firstByte, secondByte, thirdByte, fourthByte,
+                      fifthByte, sixthByte, seventhByte)
+                if (0 <= firstByte <= 127) and (0 <= secondByte <= 127) and (
+                        0 <= thirdByte <= 127) and (0 <= fourthByte <= 127) and (
+                        0 <= fifthByte <= 127) and (0 <= sixthByte <= 127) and (
+                        128 <= seventhByte <= 191):
                     print("Perfect Stream")
 
         else:
+            # sensor.close()
             break
+
 
 def main():
     global root
@@ -426,7 +434,8 @@ def main():
             shakingInterval = shakingIntervalTb.get()
             shakingDuration = shakingDurationTb.get()
 
-            if (fliesPerDarkCage != '' and timeLimit != '' and fliesPerTime != '' and fliesPerLoveCage != '' and noOfBeamsPerFly != '' and shakingInterval != '' and shakingDuration != ''):
+            if (
+                    fliesPerDarkCage != '' and timeLimit != '' and fliesPerTime != '' and fliesPerLoveCage != '' and noOfBeamsPerFly != '' and shakingInterval != '' and shakingDuration != ''):
                 settingFile = open("settings.txt", "w+")
                 settingFile.write(
                     fliesPerDarkCage + '\n' + timeLimit + '\n' + fliesPerTime + '\n' + fliesPerLoveCage + '\n' + noOfBeamsPerFly + '\n' + shakingInterval + '\n' + shakingDuration)
@@ -438,7 +447,7 @@ def main():
         backBtn.place(x=250, y=350)
 
     def startProcess():
-        global startProcessWin
+        global startProcessWin, newSettingsData
 
         startProcessWin = Toplevel(root)
         startProcessWin.overrideredirect(0)
@@ -603,8 +612,8 @@ def main():
             startFlag = 0
             if not sensor.isOpen():
                 sensor.open()
-                sensor.write(b'0')
-                sensor.close()
+            sensor.write(b'0')
+            sensor.close()
             print("Stop")
 
             startBtn = Button(startProcessWin, height=2, width=10, text="Start", font='Arial 15 bold',
@@ -772,6 +781,7 @@ def main():
 
     root.update()
     root.mainloop()
+
 
 if __name__ == "__main__":
     main()
