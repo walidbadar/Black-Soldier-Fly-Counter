@@ -10,31 +10,44 @@ brate = "115200"
 sensor = serial.Serial(Machine, baudrate=brate, timeout=0.01)
 
 # --------------------------------------------------------------
+# GPIO Setup
 # --------------------------------------------------------------
 # GPIO.setmode(GPIO.BCM)
 # GPIO.setwarnings(False)
 # GPIO.cleanup()
 # GPIO.setup(26,#GPIO.oUT, initial = GPIO.LOW) #Sensor (I/O input)
+# url = "http://192.168.1.4:8080/shot.jpg"
 
 # --------------------------------------------------------------
+# Global Variables
 # --------------------------------------------------------------
-loveCageQRcode = 'LC1'
-darkCageQRcode = 'DC1'
+flyCount = 0
+NoOfBeamPerFly = 0
+QRcode = ''
+loveCageQRcode = ''
+darkCageQRcode = ''
 startFlag = 0
 loveCageFlag = 0
 darkCageFlag = 0
 serialCallback = 0
 sec = 0
 
-
-# url = "http://192.168.1.6:8080/shot.jpg"
+# --------------------------------------------------------------
+# No. of Flies Per Beam is 2
+# --------------------------------------------------------------
+NoOfBeamPerFlyis2 = [[3, 6, 12, 24, 48, 96], [7, 14, 15, 27, 28, 30, 54, 56, 60, 61, 108, 109, 112, 113, 120, 121],
+                     [31, 62, 63, 115, 124, 126, 127], [119]]
 
 # --------------------------------------------------------------
 # Serial Data Thread
 # --------------------------------------------------------------
 def read_serial_packet():
-    print(newSettingsData[4])
-    print("Started ::")
+    global flyCount
+    print("Started Serial COM")
+
+    if newSettingsData[4] != '':
+        NoOfBeamPerFly = int(newSettingsData[4])
+
     if not sensor.isOpen():
         sensor.open()
     sensor.write(b'B')
@@ -44,26 +57,32 @@ def read_serial_packet():
                 sensorData = sensor.read(7)
                 # print("Time: ", datetime.datetime.now(), "Sensor: ", sensorData)
 
-                seventhByte = int(binascii.hexlify(sensorData)[0:2], 16)
-                sixthByte = int(binascii.hexlify(sensorData)[2:4], 16)
-                fifthByte = int(binascii.hexlify(sensorData)[4:6], 16)
-                fourthByte = int(binascii.hexlify(sensorData)[6:8], 16)
-                thirdByte = int(binascii.hexlify(sensorData)[8:10], 16)
-                secondByte = int(binascii.hexlify(sensorData)[10:12], 16)
-                firstByte = int(binascii.hexlify(sensorData)[12:14], 16)
+                Byte7 = int(binascii.hexlify(sensorData)[0:2], 16)
+                Byte6 = int(binascii.hexlify(sensorData)[2:4], 16)
+                Byte5 = int(binascii.hexlify(sensorData)[4:6], 16)
+                Byte4 = int(binascii.hexlify(sensorData)[6:8], 16)
+                Byte3 = int(binascii.hexlify(sensorData)[8:10], 16)
+                Byte2 = int(binascii.hexlify(sensorData)[10:12], 16)
+                Byte1 = int(binascii.hexlify(sensorData)[12:14], 16)
+                Beam = [Byte1, Byte2, Byte3, Byte4, Byte5, Byte6, Byte7]
 
-                print("Time: ", datetime.datetime.now(), "Sensor: ", firstByte, secondByte, thirdByte, fourthByte,
-                      fifthByte, sixthByte, seventhByte)
-                if (0 <= firstByte <= 127) and (0 <= secondByte <= 127) and (
-                        0 <= thirdByte <= 127) and (0 <= fourthByte <= 127) and (
-                        0 <= fifthByte <= 127) and (0 <= sixthByte <= 127) and (
-                        128 <= seventhByte <= 191):
-                    print("Perfect Stream")
+                print("Time: ", datetime.datetime.now(), ", Sensor: ", Beam)
+                if (0 <= Beam[0] <= 127) and (0 <= Beam[1] <= 127) and (
+                        0 <= Beam[2] <= 127) and (0 <= Beam[3] <= 127) and (
+                        0 <= Beam[4] <= 127) and (0 <= Beam[5] <= 127) and (
+                        128 <= Beam[6] <= 191):
+                    if NoOfBeamPerFly == 2:
+                        for x in range(len(Beam)):
+                            for y in range(len(NoOfBeamPerFlyis2)):
+                                if Beam[x] in NoOfBeamPerFlyis2[y]:
+                                    flyCount = flyCount + y + 1
+                    print("Fly: ", flyCount)
+                    flyCountTb.delete(0, END)
+                    flyCountTb.insert(0, str(flyCount))
 
         else:
             # sensor.close()
             break
-
 
 def main():
     global root
@@ -80,12 +99,6 @@ def main():
     # --------------------------------------------------------------
     Logophoto = PhotoImage(file="images/#eawag.gif")
     bgphoto = PhotoImage(file="images/bg.gif")
-
-    def flyCount(dividend):
-        if (dividend % 3) == 0:
-            return 1
-        else:
-            return 0
 
     def keypad(x, y):
         global root
@@ -147,7 +160,7 @@ def main():
         root.wait_window(top)
 
     def fillLoveCageQRscan():
-        global scanLCstatusLb
+        global scanLCstatusLb, QRcode
         fillLoveCageQRscanWin = Toplevel(root)
         fillLoveCageQRscanWin.overrideredirect(0)
         # fillLoveCageQRscanWin.attributes("-toolwindow", 1)
@@ -178,7 +191,6 @@ def main():
         def loveCageScanQRcode():
             global loveCageFlag, loveCageQRcode
 
-            loveCageQRcode = ''
             newLoveCageQRcodeData = []
             with open("loveCageQRcode.txt") as loveCageQRcodeFile:
                 loveCageQRcodeData = loveCageQRcodeFile.readlines()
@@ -193,9 +205,13 @@ def main():
             # resp.raw.decode_content = True
             # shutil.copyfileobj(resp.raw, local_file)
 
-            subprocess.call("raspstill -vf -o /home/pi/flyCounter/local_image.jpg", shell=True)
+            subprocess.Popen("libcamera-still -r -o /home/pi/flyCounter/local_image.jpg", shell=True)
             image = cv2.imread('local_image.jpg', 0)
             barcodes = pyzbar.decode(image)
+
+            if not barcodes:
+                loveCageFlag = 0
+                loveCageQRcode = ''
 
             for barcode in barcodes:
                 (x, y, w, h) = barcode.rect
@@ -447,7 +463,7 @@ def main():
         backBtn.place(x=250, y=350)
 
     def startProcess():
-        global startProcessWin, newSettingsData
+        global startProcessWin, newSettingsData, flyCountTb
 
         startProcessWin = Toplevel(root)
         startProcessWin.overrideredirect(0)
@@ -480,6 +496,21 @@ def main():
                               anchor=NW,
                               fg="Black", font="Arial 15 bold")
         actualValueLb.place(x=5, y=100)
+
+        # --------------------------------------------------------------
+        # Fly Count Label
+        # --------------------------------------------------------------
+        flyCountLb = Label(startProcessWin, height=1, width=10, text="Fly Count",
+                              anchor=NW,
+                              fg="Black", font="Arial 15 bold")
+        flyCountLb.place(x=5, y=275)
+
+        # --------------------------------------------------------------
+        # Fly Count Entry
+        # --------------------------------------------------------------
+        flyCountTb = Entry(startProcessWin, width=5, font="Arial 15 bold")
+        flyCountTb.place(x=200, y=275)
+        flyCountTb.insert(0, str(flyCount))
 
         # --------------------------------------------------------------
         # LogoPhoto
@@ -589,7 +620,9 @@ def main():
         # Start Button
         # --------------------------------------------------------------
         def start():
-            global startFlag
+            global startFlag, loveCageFlag, darkCageFlag
+
+            # if loveCageFlag == 1 and darkCageFlag == 1:
             print("Start")
             startFlag = 1
             threading.Thread(target=read_serial_packet).start()
@@ -655,7 +688,6 @@ def main():
             def darkCageScanQRcode():
                 global darkCageFlag, darkCageQRcode
 
-                darkCageQRcode = ''
                 newDarkCageQRcodeData = []
                 with open("darkCageQRcode.txt") as darkCageQRcodeFile:
                     darkCageQRcodeData = darkCageQRcodeFile.readlines()
@@ -670,9 +702,13 @@ def main():
                 # resp.raw.decode_content = True
                 # shutil.copyfileobj(resp.raw, local_file)
 
-                subprocess.call("raspstill -vf -o /home/pi/flyCounter/local_image.jpg", shell=True)
+                subprocess.Popen("libcamera-still -r -o /home/pi/flyCounter/local_image.jpg", shell=True)
                 image = cv2.imread('local_image.jpg', 0)
                 barcodes = pyzbar.decode(image)
+
+                if not barcodes:
+                    darkCageFlag = 0
+                    darkCageQRcode = ''
 
                 for barcode in barcodes:
                     (x, y, w, h) = barcode.rect
