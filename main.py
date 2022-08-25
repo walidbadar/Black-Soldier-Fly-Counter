@@ -4,10 +4,10 @@ from pyzbar import pyzbar
 # import RPi.GPIO as GPIO
 import cv2, requests, shutil, time, serial, subprocess, fnmatch, uuid, random, binascii, datetime, threading
 
-# Machine = "COM4"
-Machine= "/dev/ttyUSB0"
+Machine = "COM4"
+# Machine= "/dev/ttyUSB0"
 brate = "115200"
-sensor = serial.Serial(Machine, baudrate=brate, timeout=0.01)
+sensor = serial.Serial(Machine, baudrate=brate, timeout=0.00001)
 
 # --------------------------------------------------------------
 # GPIO Setup
@@ -22,7 +22,7 @@ sensor = serial.Serial(Machine, baudrate=brate, timeout=0.01)
 # Global Variables
 # --------------------------------------------------------------
 flyCount = 0
-NoOfBeamPerFly = 0
+NoOfbeamPerFly = 0
 QRcode = ''
 loveCageQRcode = ''
 darkCageQRcode = ''
@@ -33,10 +33,11 @@ serialCallback = 0
 sec = 0
 
 # --------------------------------------------------------------
-# No. of Flies Per Beam is 2
+# No. of Flies Per beam is 2
 # --------------------------------------------------------------
-NoOfBeamPerFlyis2 = [[3, 6, 12, 24, 48, 96], [7, 14, 15, 27, 28, 30, 54, 56, 60, 61, 108, 109, 112, 113, 120, 121],
+NoOfbeamPerFlyis2 = [[3, 6, 12, 24, 48, 96], [7, 14, 15, 27, 28, 30, 54, 56, 60, 61, 108, 109, 112, 113, 120, 121],
                      [31, 62, 63, 115, 124, 126, 127], [119]]
+
 
 # --------------------------------------------------------------
 # Serial Data Thread
@@ -46,46 +47,65 @@ def read_serial_packet():
     print("Started Serial COM")
 
     if newSettingsData[4] != '':
-        NoOfBeamPerFly = int(newSettingsData[4])
+        NoOfbeamPerFly = int(newSettingsData[4])
 
     if not sensor.isOpen():
         sensor.open()
     sensor.write(b'B')
     while True:
         if startFlag:
+            sensor.write(b'B')  # Experimental Case
             if sensor.inWaiting() > 6:
                 sensorData = sensor.read(7)
                 # print("Time: ", datetime.datetime.now(), "Sensor: ", sensorData)
 
-                Byte7 = int(binascii.hexlify(sensorData)[0:2], 16)
-                Byte6 = int(binascii.hexlify(sensorData)[2:4], 16)
-                Byte5 = int(binascii.hexlify(sensorData)[4:6], 16)
+                Byte1 = int(binascii.hexlify(sensorData)[0:2], 16)
+                Byte1bin = format(Byte1, '#010b')[4:]  # Beam 43 to 48
+                Byte2 = int(binascii.hexlify(sensorData)[2:4], 16)
+                Byte2bin = format(Byte2, '#010b')[2:]  # Beam 36 to 42
+                Byte3 = int(binascii.hexlify(sensorData)[4:6], 16)
+                Byte3bin = format(Byte3, '#010b')[2:]  # Beam 29 to 35
                 Byte4 = int(binascii.hexlify(sensorData)[6:8], 16)
-                Byte3 = int(binascii.hexlify(sensorData)[8:10], 16)
-                Byte2 = int(binascii.hexlify(sensorData)[10:12], 16)
-                Byte1 = int(binascii.hexlify(sensorData)[12:14], 16)
-                Beam = [Byte1, Byte2, Byte3, Byte4, Byte5, Byte6, Byte7]
+                Byte4bin = format(Byte4, '#010b')[2:]  # Beam 21 to 28
+                Byte5 = int(binascii.hexlify(sensorData)[8:10], 16)
+                Byte5bin = format(Byte5, '#010b')[2:]  # Beam 15 to 21
+                Byte6 = int(binascii.hexlify(sensorData)[10:12], 16)
+                Byte6bin = format(Byte6, '#010b')[2:]  # Beam 8 to 14
+                Byte7 = int(binascii.hexlify(sensorData)[12:14], 16)
+                Byte7bin = format(Byte7, '#010b')[2:]  # Beam 1 to 7
 
-                print("Time: ", datetime.datetime.now(), ", Sensor: ", Beam)
-                if (0 <= Beam[0] <= 127) and (0 <= Beam[1] <= 127) and (
-                        0 <= Beam[2] <= 127) and (0 <= Beam[3] <= 127) and (
-                        0 <= Beam[4] <= 127) and (0 <= Beam[5] <= 127) and (
-                        128 <= Beam[6] <= 191):
-                    if NoOfBeamPerFly == 2:
-                        for x in range(len(Beam)):
-                            for y in range(len(NoOfBeamPerFlyis2)):
-                                if Beam[x] in NoOfBeamPerFlyis2[y]:
-                                    flyCount = flyCount + y + 1
-                    print("Fly: ", flyCount)
-                    flyCountTb.delete(0, END)
-                    flyCountTb.insert(0, str(flyCount))
+                print("Byte7bin: ", Byte7bin)
+                print("Byte6bin: ", Byte6bin)
+
+                beam = [Byte1, Byte2, Byte3, Byte4, Byte5, Byte6, Byte7]
+                beamBin = [Byte1bin, Byte2bin, Byte3bin, Byte4bin, Byte5bin, Byte6bin, Byte7bin]
+                beam48 = Byte1bin+Byte2bin+Byte3bin+Byte4bin+Byte5bin+Byte6bin+Byte7bin
+                beam48Split = beam48.split('0')
+                beam48Split = [zero for zero in beam48Split if zero]
+
+                print("beam48: ", beam48)
+                print("beam48Split: ", beam48Split)
+                for x in range(len(beam48Split)):
+                    # flyCount = (len(beam48Split[x])/NoOfbeamPerFly) + flyCount
+                    print(len(beam48Split[x])/NoOfbeamPerFly)
+
+                print("Time: ", datetime.datetime.now(), ", Sensor: ", beamBin)
+                if (128 <= beam[0] <= 191) and (0 <= beam[1] <= 127) and (
+                        0 <= beam[2] <= 127) and (0 <= beam[3] <= 127) and (
+                        0 <= beam[4] <= 127) and (0 <= beam[5] <= 127) and (
+                        0 <= beam[6] <= 127):
+                    print("Perfect beam")
+
+                sensor.write(b'0')  # Experimental Case
+                time.sleep(0.00001)  # Experimental Case
 
         else:
             # sensor.close()
             break
 
+
 def main():
-    global root
+    global root, flyCountTb
 
     root = Tk()
     root.overrideredirect(0)
@@ -376,21 +396,21 @@ def main():
         # --------------------------------------------------------------
         # Number of beams/fly
         # --------------------------------------------------------------
-        def noOfBeamsPerFlyKeyboard():
+        def noOfbeamsPerFlyKeyboard():
             global entry
 
-            entry = noOfBeamsPerFlyTb
+            entry = noOfbeamsPerFlyTb
             keypad("350", "180")
 
-        noOfBeamsPerFlyLb = Label(settinWin, height=1, width=15, text="No. of beams/fly",
+        noOfbeamsPerFlyLb = Label(settinWin, height=1, width=15, text="No. of beams/fly",
                                   anchor=NW, fg="Black",
                                   font="Arial 15")
-        noOfBeamsPerFlyLb.place(x=5, y=150)
+        noOfbeamsPerFlyLb.place(x=5, y=150)
 
-        noOfBeamsPerFlyTb = Entry(settinWin, width=9, font="Arial 15 bold")
-        noOfBeamsPerFlyTb.place(x=200, y=150)
-        noOfBeamsPerFlyTb.bind("<Button-1>", lambda e: noOfBeamsPerFlyKeyboard())
-        noOfBeamsPerFlyTb.insert(0, newSettingsData[4])
+        noOfbeamsPerFlyTb = Entry(settinWin, width=9, font="Arial 15 bold")
+        noOfbeamsPerFlyTb.place(x=200, y=150)
+        noOfbeamsPerFlyTb.bind("<Button-1>", lambda e: noOfbeamsPerFlyKeyboard())
+        noOfbeamsPerFlyTb.insert(0, newSettingsData[4])
 
         # --------------------------------------------------------------
         # Dark cage shaking
@@ -446,15 +466,15 @@ def main():
             timeLimit = timeLimitTb.get()
             fliesPerTime = fliesPerTimeTb.get()
             fliesPerLoveCage = fliesPerLoveCageTb.get()
-            noOfBeamsPerFly = noOfBeamsPerFlyTb.get()
+            noOfbeamsPerFly = noOfbeamsPerFlyTb.get()
             shakingInterval = shakingIntervalTb.get()
             shakingDuration = shakingDurationTb.get()
 
             if (
-                    fliesPerDarkCage != '' and timeLimit != '' and fliesPerTime != '' and fliesPerLoveCage != '' and noOfBeamsPerFly != '' and shakingInterval != '' and shakingDuration != ''):
+                    fliesPerDarkCage != '' and timeLimit != '' and fliesPerTime != '' and fliesPerLoveCage != '' and noOfbeamsPerFly != '' and shakingInterval != '' and shakingDuration != ''):
                 settingFile = open("settings.txt", "w+")
                 settingFile.write(
-                    fliesPerDarkCage + '\n' + timeLimit + '\n' + fliesPerTime + '\n' + fliesPerLoveCage + '\n' + noOfBeamsPerFly + '\n' + shakingInterval + '\n' + shakingDuration)
+                    fliesPerDarkCage + '\n' + timeLimit + '\n' + fliesPerTime + '\n' + fliesPerLoveCage + '\n' + noOfbeamsPerFly + '\n' + shakingInterval + '\n' + shakingDuration)
             settinWin.destroy()
 
         backBtn = Button(settinWin, height=2, width=20, text="Back", font='Arial 15 bold',
@@ -501,8 +521,8 @@ def main():
         # Fly Count Label
         # --------------------------------------------------------------
         flyCountLb = Label(startProcessWin, height=1, width=10, text="Fly Count",
-                              anchor=NW,
-                              fg="Black", font="Arial 15 bold")
+                           anchor=NW,
+                           fg="Black", font="Arial 15 bold")
         flyCountLb.place(x=5, y=275)
 
         # --------------------------------------------------------------
@@ -510,7 +530,13 @@ def main():
         # --------------------------------------------------------------
         flyCountTb = Entry(startProcessWin, width=5, font="Arial 15 bold")
         flyCountTb.place(x=200, y=275)
-        flyCountTb.insert(0, str(flyCount))
+
+        def flyCountUpdate():
+            flyCountTb.delete(0, END)
+            flyCountTb.insert(0, str(flyCount))
+            startProcessWin.after(1, flyCountUpdate)
+
+        startProcessWin.after(1, flyCountUpdate)
 
         # --------------------------------------------------------------
         # LogoPhoto
