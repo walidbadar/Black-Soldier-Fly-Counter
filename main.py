@@ -2,12 +2,12 @@
 from tkinter import *
 from pyzbar import pyzbar
 # import RPi.GPIO as GPIO
-import cv2, requests, shutil, time, serial, subprocess, fnmatch, uuid, random, binascii, datetime, threading
+import cv2, requests, shutil, time, serial, subprocess, fnmatch, uuid, random, binascii, datetime, threading, math
 
-Machine = "COM4"
-# Machine= "/dev/ttyUSB0"
+# Machine = "COM4"
+Machine= "/dev/ttyUSB0"
 brate = "115200"
-sensor = serial.Serial(Machine, baudrate=brate, timeout=0.00001)
+sensor = serial.Serial(Machine, baudrate=brate, timeout=0.001)
 
 # --------------------------------------------------------------
 # GPIO Setup
@@ -21,6 +21,7 @@ sensor = serial.Serial(Machine, baudrate=brate, timeout=0.00001)
 # --------------------------------------------------------------
 # Global Variables
 # --------------------------------------------------------------
+noOffly = 0
 flyCount = 0
 NoOfbeamPerFly = 0
 QRcode = ''
@@ -31,13 +32,6 @@ loveCageFlag = 0
 darkCageFlag = 0
 serialCallback = 0
 sec = 0
-
-# --------------------------------------------------------------
-# No. of Flies Per beam is 2
-# --------------------------------------------------------------
-NoOfbeamPerFlyis2 = [[3, 6, 12, 24, 48, 96], [7, 14, 15, 27, 28, 30, 54, 56, 60, 61, 108, 109, 112, 113, 120, 121],
-                     [31, 62, 63, 115, 124, 126, 127], [119]]
-
 
 # --------------------------------------------------------------
 # Serial Data Thread
@@ -57,50 +51,55 @@ def read_serial_packet():
             sensor.write(b'B')  # Experimental Case
             if sensor.inWaiting() > 6:
                 sensorData = sensor.read(7)
-                # print("Time: ", datetime.datetime.now(), "Sensor: ", sensorData)
+                # print("Time: ", datetime.datetime.now(), "Sensor: ", sensorData)  # Debug for Serial COM
 
                 Byte1 = int(binascii.hexlify(sensorData)[0:2], 16)
                 Byte1bin = format(Byte1, '#010b')[4:]  # Beam 43 to 48
                 Byte2 = int(binascii.hexlify(sensorData)[2:4], 16)
-                Byte2bin = format(Byte2, '#010b')[2:]  # Beam 36 to 42
+                Byte2bin = format(Byte2, '#010b')[3:]  # Beam 36 to 42
                 Byte3 = int(binascii.hexlify(sensorData)[4:6], 16)
-                Byte3bin = format(Byte3, '#010b')[2:]  # Beam 29 to 35
+                Byte3bin = format(Byte3, '#010b')[3:]  # Beam 29 to 35
                 Byte4 = int(binascii.hexlify(sensorData)[6:8], 16)
-                Byte4bin = format(Byte4, '#010b')[2:]  # Beam 21 to 28
+                Byte4bin = format(Byte4, '#010b')[3:]  # Beam 21 to 28
                 Byte5 = int(binascii.hexlify(sensorData)[8:10], 16)
-                Byte5bin = format(Byte5, '#010b')[2:]  # Beam 15 to 21
+                Byte5bin = format(Byte5, '#010b')[3:]  # Beam 15 to 21
                 Byte6 = int(binascii.hexlify(sensorData)[10:12], 16)
-                Byte6bin = format(Byte6, '#010b')[2:]  # Beam 8 to 14
+                Byte6bin = format(Byte6, '#010b')[3:]  # Beam 8 to 14
                 Byte7 = int(binascii.hexlify(sensorData)[12:14], 16)
-                Byte7bin = format(Byte7, '#010b')[2:]  # Beam 1 to 7
-
-                print("Byte7bin: ", Byte7bin)
-                print("Byte6bin: ", Byte6bin)
+                Byte7bin = format(Byte7, '#010b')[3:]  # Beam 1 to 7
 
                 beam = [Byte1, Byte2, Byte3, Byte4, Byte5, Byte6, Byte7]
-                beamBin = [Byte1bin, Byte2bin, Byte3bin, Byte4bin, Byte5bin, Byte6bin, Byte7bin]
-                beam48 = Byte1bin+Byte2bin+Byte3bin+Byte4bin+Byte5bin+Byte6bin+Byte7bin
-                beam48Split = beam48.split('0')
-                beam48Split = [zero for zero in beam48Split if zero]
 
-                print("beam48: ", beam48)
-                print("beam48Split: ", beam48Split)
-                for x in range(len(beam48Split)):
-                    # flyCount = (len(beam48Split[x])/NoOfbeamPerFly) + flyCount
-                    print(len(beam48Split[x])/NoOfbeamPerFly)
-
-                print("Time: ", datetime.datetime.now(), ", Sensor: ", beamBin)
                 if (128 <= beam[0] <= 191) and (0 <= beam[1] <= 127) and (
                         0 <= beam[2] <= 127) and (0 <= beam[3] <= 127) and (
                         0 <= beam[4] <= 127) and (0 <= beam[5] <= 127) and (
                         0 <= beam[6] <= 127):
                     print("Perfect beam")
 
+                    beamBin = [Byte1bin, Byte2bin, Byte3bin, Byte4bin, Byte5bin, Byte6bin, Byte7bin]
+                    beam48 = Byte1bin + Byte2bin + Byte3bin + Byte4bin + Byte5bin + Byte6bin + Byte7bin
+                    beam48Split = beam48.split('0')
+                    beam48Split = [zero for zero in beam48Split if zero]
+
+                    print("Time: ", datetime.datetime.now(), ", Sensor: ", beamBin)
+                    print("beam48Split: ", beam48Split)
+                    for x in range(len(beam48Split)):
+                        flyCountRound = len(beam48Split[x]) / NoOfbeamPerFly
+                        if (float(flyCountRound) % 1) >= 0.5:
+                            noOffly = math.ceil(flyCountRound)
+                        else:
+                            noOffly = round(flyCountRound)
+                        print("No. of flies extracted from 48 beams :", flyCountRound)
+                        flyCount = noOffly + flyCount
+
+                    print("No Of beams Per Fly :", NoOfbeamPerFly)
+                    print("flyCount: ", flyCount)
+
                 sensor.write(b'0')  # Experimental Case
-                time.sleep(0.00001)  # Experimental Case
+                time.sleep(0.0001)  # Experimental Case
 
         else:
-            # sensor.close()
+            # sensor.close()  # Experimental Case
             break
 
 
@@ -534,6 +533,21 @@ def main():
         def flyCountUpdate():
             flyCountTb.delete(0, END)
             flyCountTb.insert(0, str(flyCount))
+
+            actualfliesPerDarkCageTb.delete(0, END)
+            actualfliesPerDarkCageTb.insert(0, str(flyCount))
+
+            actualfliesPerLoveCageTb.delete(0, END)
+            actualfliesPerLoveCageTb.insert(0, str(flyCount))
+
+            # if int(actualfliesPerDarkCageTb.get()) >= int(newSettingsData[0]):
+            #     print("No. Flies per Dark Cage are Collected")
+            #     stop()
+            #
+            # if int(actualfliesPerLoveCageTb.get()) >= int(newSettingsData[3]):
+            #     print("No. Flies per Love Cage are Collected")
+            #     stop()
+
             startProcessWin.after(1, flyCountUpdate)
 
         startProcessWin.after(1, flyCountUpdate)
