@@ -4,8 +4,8 @@ from pyzbar import pyzbar
 # import RPi.GPIO as GPIO
 import cv2, requests, shutil, time, serial, subprocess, fnmatch, uuid, random, binascii, datetime, threading, math
 
-# Machine = "COM4"
-Machine= "/dev/ttyUSB0"
+Machine = "COM4"
+# Machine = "/dev/ttyUSB0"
 brate = "115200"
 sensor = serial.Serial(Machine, baudrate=brate, timeout=0.001)
 
@@ -21,7 +21,7 @@ sensor = serial.Serial(Machine, baudrate=brate, timeout=0.001)
 # --------------------------------------------------------------
 # Global Variables
 # --------------------------------------------------------------
-noOffly = 0
+noOfFly = 0
 flyCount = 0
 NoOfbeamPerFly = 0
 QRcode = ''
@@ -32,6 +32,7 @@ loveCageFlag = 0
 darkCageFlag = 0
 serialCallback = 0
 sec = 0
+
 
 # --------------------------------------------------------------
 # Serial Data Thread
@@ -46,11 +47,16 @@ def read_serial_packet():
     if not sensor.isOpen():
         sensor.open()
     sensor.write(b'B')
+
     while True:
         if startFlag:
-            sensor.write(b'B')  # Experimental Case
+            # sensor.write(b'B')  # Experimental Case
+
             if sensor.inWaiting() > 6:
                 sensorData = sensor.read(7)
+                # sensor.reset_input_buffer()  # Experimental Case
+                # sensor.write(b'0')  # Experimental Case
+                # sensor.flush()  # Experimental Case
                 # print("Time: ", datetime.datetime.now(), "Sensor: ", sensorData)  # Debug for Serial COM
 
                 Byte1 = int(binascii.hexlify(sensorData)[0:2], 16)
@@ -85,26 +91,25 @@ def read_serial_packet():
                     print("beam48Split: ", beam48Split)
                     for x in range(len(beam48Split)):
                         flyCountRound = len(beam48Split[x]) / NoOfbeamPerFly
-                        if (float(flyCountRound) % 1) >= 0.5:
-                            noOffly = math.ceil(flyCountRound)
+                        if (float(flyCountRound) % 1) > 0:
+                            noOfFly = math.ceil(flyCountRound)
                         else:
-                            noOffly = round(flyCountRound)
+                            noOfFly = round(flyCountRound)
                         print("No. of flies extracted from 48 beams :", flyCountRound)
-                        flyCount = noOffly + flyCount
+                        flyCount = noOfFly + flyCount
 
                     print("No Of beams Per Fly :", NoOfbeamPerFly)
                     print("flyCount: ", flyCount)
 
-                sensor.write(b'0')  # Experimental Case
-                time.sleep(0.0001)  # Experimental Case
+                # sensor.write(b'0')  # Experimental Case
+                # time.sleep(0.1)  # Experimental Case
 
         else:
             # sensor.close()  # Experimental Case
             break
 
-
 def main():
-    global root, flyCountTb
+    global root
 
     root = Tk()
     root.overrideredirect(0)
