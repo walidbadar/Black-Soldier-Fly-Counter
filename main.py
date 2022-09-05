@@ -1,8 +1,9 @@
 # import the necessary packages
 from tkinter import *
 from pyzbar import pyzbar
+from datetime import datetime
 # import RPi.GPIO as GPIO
-import cv2, requests, shutil, time, serial, subprocess, fnmatch, uuid, random, binascii, datetime, threading, math, io
+import cv2, requests, shutil, time, serial, binascii, threading, math, io, os, csv
 
 # Machine = "COM4"
 Machine = "/dev/ttyUSB0"
@@ -16,7 +17,7 @@ sensor = serial.Serial(Machine, baudrate=brate, timeout=0.001)
 # GPIO.setwarnings(False)
 # GPIO.cleanup()
 # GPIO.setup(26,#GPIO.oUT, initial = GPIO.LOW) #Sensor (I/O input)
-# url = "http://192.168.1.4:8080/shot.jpg"
+url = "http://192.168.1.4:8080/shot.jpg"
 
 # --------------------------------------------------------------
 # Global Variables
@@ -27,15 +28,17 @@ NoOfbeamPerFly = 0
 preBeam48 = ''
 preBeam48Join = ''
 QRcode = ''
-loveCageQRcode = ''
-darkCageQRcode = ''
+loveCageQRcode = 'LC1'
+darkCageQRcode = 'DC1'
 startFlag = 0
 loveCageFlag = 0
 darkCageFlag = 0
 serialCallback = 0
+logsData = []
+logsHeader = ['Date', 'ID of Dark Cage', 'Start Time of Dark Cage', 'End Time of Dark Cage', 'No. of Flies from Dark Cage', 'Total No. of Flies from Love Cage']
 sec = 0
 path = '/home/pi/flyCounter/'
-
+# path = 'D:\\Softwares\\Waleed Docs\\Projects\\Freelancing\\Fiverr\\magnetofix (Stefan)\\Fly Counter\\logs\\'
 
 # --------------------------------------------------------------
 # Serial Data Thread
@@ -58,7 +61,7 @@ def read_serial_packet():
 
             if sensor.inWaiting() > 6:
                 sensorData = sensor.read(7)
-                print("StartTime: ", datetime.datetime.now())
+                print("StartTime: ", datetime.now())
                 # sensor.reset_input_buffer()  # Experimental Case
                 # sensor.write(b'0')  # Experimental Case
                 # sensor.flush()  # Experimental Case
@@ -104,7 +107,7 @@ def read_serial_packet():
                         print("Same")
                     else:
                         print("Changed")
-                        print("Time: ", datetime.datetime.now(), ", Sensor: ", beamBin)
+                        print("Time: ", datetime.now(), ", Sensor: ", beamBin)
                         print("beam48Split: ", beam48Split)
                         for x in range(len(beam48Split)):
                             flyCountRound = len(beam48Split[x]) / NoOfbeamPerFly
@@ -239,12 +242,12 @@ def main():
                 newLoveCageQRcodeData.append(loveCageQRcodeData)
             print(newLoveCageQRcodeData)
 
-            # resp = requests.get(url, stream=True)
-            # local_file = open('local_image.jpg', 'wb')
-            # resp.raw.decode_content = True
-            # shutil.copyfileobj(resp.raw, local_file)
+            resp = requests.get(url, stream=True)
+            local_file = open('local_image.jpg', 'wb')
+            resp.raw.decode_content = True
+            shutil.copyfileobj(resp.raw, local_file)
 
-            subprocess.Popen("libcamera-still -r -o /home/pi/flyCounter/local_image.jpg", shell=True)
+            # subprocess.Popen("libcamera-still -r -o /home/pi/flyCounter/local_image.jpg", shell=True)
             image = cv2.imread('local_image.jpg', 0)
             barcodes = pyzbar.decode(image)
 
@@ -551,6 +554,20 @@ def main():
         flyCountTb.place(x=200, y=275)
 
         def flyCountUpdate():
+            loveCageLogsFile = path + loveCageQRcode + '.csv'
+            if os.path.exists(loveCageLogsFile):
+                logsRead = list(csv.reader(open(loveCageLogsFile)))
+                logsPos = len(logsRead) - 1
+                if logsPos > 0:
+                    logsRead[logsPos][4] = str(flyCount)
+                    logsRead[logsPos][5] = str(flyCount)
+
+                print('logsRead: ', logsRead)
+                with open(loveCageLogsFile, 'w', encoding='UTF8', newline='') as logs:
+                    writer = csv.writer(logs)
+                    for x in range(len(logsRead)):
+                        writer.writerow(logsRead[x])
+
             flyCountTb.delete(0, END)
             flyCountTb.insert(0, str(flyCount))
 
@@ -561,16 +578,16 @@ def main():
             actualfliesPerLoveCageTb.insert(0, str(flyCount))
 
             # if int(actualfliesPerDarkCageTb.get()) >= int(newSettingsData[0]):
-            #     print("No. Flies per Dark Cage are Collected")
+            #     print("No. of Flies per Dark Cage are Collected")
             #     stop()
             #
             # if int(actualfliesPerLoveCageTb.get()) >= int(newSettingsData[3]):
-            #     print("No. Flies per Love Cage are Collected")
+            #     print("No. of Flies per Love Cage are Collected")
             #     stop()
 
-            startProcessWin.after(1, flyCountUpdate)
+            startProcessWin.after(10, flyCountUpdate)
 
-        startProcessWin.after(1, flyCountUpdate)
+        startProcessWin.after(10, flyCountUpdate)
 
         # --------------------------------------------------------------
         # LogoPhoto
@@ -680,9 +697,27 @@ def main():
         # Start Button
         # --------------------------------------------------------------
         def start():
-            global startFlag, loveCageFlag, darkCageFlag
+            global startFlag, loveCageFlag, darkCageFlag, logsData
 
             # if loveCageFlag == 1 and darkCageFlag == 1:
+            date = str(datetime.now())[:10]
+            startTimeofDC = str(datetime.now())[10:19]
+            endTimeofDC = ''
+            logsData = [date, darkCageQRcode, startTimeofDC, endTimeofDC, str(flyCount), str(flyCount)]
+            loveCageLogsFile = path + loveCageQRcode + '.csv'
+
+            if os.path.exists(loveCageLogsFile):
+                print("Found Logs File")
+                with open(loveCageLogsFile, 'a', encoding='UTF8', newline='') as logs:
+                    writer = csv.writer(logs)
+                    writer.writerow(logsData)
+            else:
+                print("Creating Logs File")
+                with open(loveCageLogsFile, 'w', encoding='UTF8', newline='') as logs:
+                    writer = csv.writer(logs)
+                    writer.writerow(logsHeader)
+                    writer.writerow(logsData)
+
             print("Start")
             startFlag = 1
             threading.Thread(target=read_serial_packet).start()
@@ -709,6 +744,16 @@ def main():
             sensor.flush()
             sensor.close()
             print("Stop")
+
+            # loveCageLogsFile = path + loveCageQRcode + '.csv'
+            # if os.path.exists(loveCageLogsFile):
+            #     logsRead = list(csv.reader(open(loveCageLogsFile)))
+            #     logsRead[1][3] = str(datetime.now())[10:19]
+            #
+            #     with open(loveCageLogsFile, 'w', encoding='UTF8', newline='') as logs:
+            #         writer = csv.writer(logs)
+            #         writer.writerow(logsHeader)
+            #         writer.writerow(logsRead[1])
 
             startBtn = Button(startProcessWin, height=2, width=10, text="Start", font='Arial 15 bold',
                               fg="Black", bg='#75CC3D', relief=RAISED,
@@ -758,12 +803,12 @@ def main():
                     newDarkCageQRcodeData.append(darkCageQRcodeData)
                 print(newDarkCageQRcodeData)
 
-                # resp = requests.get(url, stream=True)
-                # local_file = open('local_image.jpg', 'wb')
-                # resp.raw.decode_content = True
-                # shutil.copyfileobj(resp.raw, local_file)
+                resp = requests.get(url, stream=True)
+                local_file = open('local_image.jpg', 'wb')
+                resp.raw.decode_content = True
+                shutil.copyfileobj(resp.raw, local_file)
 
-                subprocess.Popen("libcamera-still -r -o /home/pi/flyCounter/local_image.jpg", shell=True)
+                # subprocess.Popen("libcamera-still -r -o /home/pi/flyCounter/local_image.jpg", shell=True)
                 image = cv2.imread('local_image.jpg', 0)
                 barcodes = pyzbar.decode(image)
 
