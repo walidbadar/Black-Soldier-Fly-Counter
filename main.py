@@ -734,13 +734,16 @@ def main():
             sensor.close()
             print("Stop")
 
-            # logsData[3] = str(datetime.now())[10:19]
-            #
-            # loveCageLogsFile = path + 'logs/' + loveCageQRcode + '.csv'
-            # if os.path.exists(loveCageLogsFile):
-            #     with open(loveCageLogsFile, 'a', encoding='UTF8', newline='') as logs:
-            #         writer = csv.writer(logs)
-            #         writer.writerow(logsData)
+            loveCageLogsFile = path + 'logs/' + loveCageQRcode + '.csv'
+            logsRead = list(csv.reader(open(loveCageLogsFile)))
+            logsRead.pop()
+
+            logsData[3] = str(datetime.now())[10:19]
+
+            with open(loveCageLogsFile, 'w', encoding='UTF8', newline='') as logs:
+                writer = csv.writer(logs)
+                writer.writerows(logsRead)
+                writer.writerow(logsData)
 
             startBtn = Button(startProcessWin, height=2, width=10, text="Start", font='Arial 15 bold',
                               fg="Black", bg='#75CC3D', relief=RAISED,
