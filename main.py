@@ -2,7 +2,6 @@
 from tkinter import *
 from pyzbar import pyzbar
 from datetime import datetime
-# import RPi.GPIO as GPIO
 import cv2, requests, shutil, time, serial, binascii, threading, math, io, os, csv
 
 if os.name == 'nt':
