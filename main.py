@@ -106,7 +106,7 @@ def read_serial_packet():
                     preBeam48Join = io.StringIO()
                     preBeam48Join.write(str(beam48Join))
 
-                    if preBeam48 != str(beam48Join):  # Experimental Case
+                    if preBeam48 == str(beam48Join):  # Experimental Case
                         print("Same")
                     else:
                         print("Changed")
