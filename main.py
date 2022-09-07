@@ -18,9 +18,15 @@ else:
     # ---------------------------------------------------------------
     import RPi.GPIO as GPIO
 
-    GPIO.setmode(GPIO.BOARD)
+    GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
     GPIO.cleanup()
+    GPIO.setup(19, GPIO.OUT, initial=GPIO.LOW)         # Indicator LED
+    GPIO.setup(11, GPIO.OUT, initial=GPIO.LOW)         # Servo motor for cage agitation
+    GPIO.setup(10, GPIO.OUT, initial=GPIO.LOW)         # Direction of the stepper motor of the gate
+    GPIO.setup(9, GPIO.OUT, initial=GPIO.LOW)          # Stepper motor of the gate
+    GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Upper switch key to stop the opening gate
+    GPIO.setup(2, GPIO.IN, pull_up_down=GPIO.PUD_UP)   # Lower switch key to stop the closing gate
 
 # --------------------------------------------------------------
 # Global Variables
@@ -41,7 +47,6 @@ noOfFliesPerMinTimer = ''
 logsData = ['', '', '', '', '', '']
 logsHeader = ['Date', 'ID of Dark Cage', 'Start Time of Dark Cage', 'End Time of Dark Cage',
               'No. of Flies from Dark Cage', 'Total No. of Flies from Love Cage']
-
 
 # --------------------------------------------------------------
 # No. of Flies per minute timer
@@ -64,7 +69,6 @@ def noOfFliesPerMin():
 # Serial Data Thread
 # --------------------------------------------------------------
 sensor = serial.Serial(comPort, baudrate="115200", timeout=0.001)
-
 
 def read_serial_packet():
     global flyCount, preBeam48, preBeam48Join
