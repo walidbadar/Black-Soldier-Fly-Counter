@@ -25,6 +25,7 @@ else:
 # --------------------------------------------------------------
 # Global Variables
 # --------------------------------------------------------------
+count = 1
 noOfFly = 0
 flyCount = 0
 NoOfbeamPerFly = 0
@@ -37,14 +38,34 @@ startFlag = 0
 loveCageFlag = 0
 darkCageFlag = 0
 serialCallback = 0
+noOfFliesPerMinTimer = ''
 logsData = ['', '', '', '', '', '']
 logsHeader = ['Date', 'ID of Dark Cage', 'Start Time of Dark Cage', 'End Time of Dark Cage',
               'No. of Flies from Dark Cage', 'Total No. of Flies from Love Cage']
+
+
+# --------------------------------------------------------------
+# No. of Flies per minute timer
+# --------------------------------------------------------------
+def noOfFliesPerMin():
+    global count, noOfFliesPerMinTimer
+    print('count', count)
+    print('flyCount', flyCount)
+    print(datetime.now())
+
+    noOfFliesPerMinTimer = root.after(10000, noOfFliesPerMin)
+
+    if flyCount < (int(newSettingsData[2])) * count:
+        print('No Fly Detected within 1 min', datetime.now())
+        stop()
+    else:
+        count = count + 1
 
 # --------------------------------------------------------------
 # Serial Data Thread
 # --------------------------------------------------------------
 sensor = serial.Serial(comPort, baudrate="115200", timeout=0.001)
+
 
 def read_serial_packet():
     global flyCount, preBeam48, preBeam48Join
@@ -93,7 +114,6 @@ def read_serial_packet():
 
                     if preBeam48Join != '':
                         preBeam48 = preBeam48Join.getvalue()
-                        print('preBeam48', preBeam48)
 
                     beamBin = [Byte1bin, Byte2bin, Byte3bin, Byte4bin, Byte5bin, Byte6bin, Byte7bin]
                     beam48 = Byte1bin + Byte2bin + Byte3bin + Byte4bin + Byte5bin + Byte6bin + Byte7bin
@@ -101,6 +121,7 @@ def read_serial_packet():
                     beam48Split = [zero for zero in beam48Split if zero]
                     beam48Join = ''.join(beamBin)
                     print('beam48Join', beam48Join)
+                    print("beam48Split: ", beam48Split)
 
                     preBeam48Join = io.StringIO()
                     preBeam48Join.write(str(beam48Join))
@@ -109,19 +130,15 @@ def read_serial_packet():
                         print("Same")
                     else:
                         print("Changed")
-                        print("Time: ", datetime.now(), ", Sensor: ", beamBin)
-                        print("beam48Split: ", beam48Split)
                         for x in range(len(beam48Split)):
                             flyCountRound = len(beam48Split[x]) / NoOfbeamPerFly
                             if (float(flyCountRound) % 1) > 0:
                                 noOfFly = math.ceil(flyCountRound)
                             else:
                                 noOfFly = round(flyCountRound)
-                            print("No. of flies extracted from 48 beams :", flyCountRound)
                             flyCount = noOfFly + flyCount
 
-                        print("No Of beams Per Fly :", NoOfbeamPerFly)
-                        print("flyCount: ", flyCount)
+                        # print("flyCount: ", flyCount)
 
         else:
             # sensor.close()  # Experimental Case
@@ -508,7 +525,7 @@ def main():
         backBtn.place(x=250, y=350)
 
     def startProcess():
-        global startProcessWin, newSettingsData, flyCountTb
+        global startProcessWin, newSettingsData, flyCountTb, actualtimeLimitTb, actualfliesPerTimeTb, stop
 
         startProcessWin = Toplevel(root)
         startProcessWin.overrideredirect(0)
@@ -566,13 +583,13 @@ def main():
             actualfliesPerLoveCageTb.delete(0, END)
             actualfliesPerLoveCageTb.insert(0, str(flyCount))
 
-            # if int(actualfliesPerDarkCageTb.get()) >= int(newSettingsData[0]):
-            #     print("No. of Flies per Dark Cage are Collected")
-            #     stop()
-            #
-            # if int(actualfliesPerLoveCageTb.get()) >= int(newSettingsData[3]):
-            #     print("No. of Flies per Love Cage are Collected")
-            #     stop()
+            if int(actualfliesPerDarkCageTb.get()) >= int(newSettingsData[0]):
+                print("No. of Flies per Dark Cage are Collected")
+                # stop()
+
+            if int(actualfliesPerLoveCageTb.get()) >= int(newSettingsData[3]):
+                print("No. of Flies per Love Cage are Collected")
+                # stop()
 
             startProcessWin.after(10, flyCountUpdate)
 
@@ -686,13 +703,16 @@ def main():
         # Start Button
         # --------------------------------------------------------------
         def start():
-            global startFlag, loveCageFlag, darkCageFlag, flyCount
+            global startFlag, loveCageFlag, darkCageFlag, startTime, noOfFliesPerMinTimer, flyCount
 
             # if loveCageFlag == 1 and darkCageFlag == 1:
             print("Start")
             startFlag = 1
             flyCount = 0
+            startTime = time.time()
+            print('startTime', datetime.now())
             threading.Thread(target=read_serial_packet).start()
+            noOfFliesPerMinTimer = root.after(10000, noOfFliesPerMin)
 
             logsData[0] = str(datetime.now())[:10]
             logsData[1] = darkCageQRcode
@@ -725,25 +745,30 @@ def main():
         # Stop Button
         # --------------------------------------------------------------
         def stop():
-            global serialCallback, startFlag
+            global count, startFlag, serialCallback
+
+            print("Stop")
             startFlag = 0
+            count = 0
             if not sensor.isOpen():
                 sensor.open()
             sensor.write(b'0')
             sensor.flush()
             sensor.close()
-            print("Stop")
+            if noOfFliesPerMinTimer!= '':
+                root.after_cancel(noOfFliesPerMinTimer)
 
             loveCageLogsFile = path + 'logs/' + loveCageQRcode + '.csv'
-            logsRead = list(csv.reader(open(loveCageLogsFile)))
-            logsRead.pop()
+            if os.path.exists(loveCageLogsFile):
+                logsRead = list(csv.reader(open(loveCageLogsFile)))
+                logsRead.pop()
 
-            logsData[3] = str(datetime.now())[10:19]
+                logsData[3] = str(datetime.now())[10:19]
 
-            with open(loveCageLogsFile, 'w', encoding='UTF8', newline='') as logs:
-                writer = csv.writer(logs)
-                writer.writerows(logsRead)
-                writer.writerow(logsData)
+                with open(loveCageLogsFile, 'w', encoding='UTF8', newline='') as logs:
+                    writer = csv.writer(logs)
+                    writer.writerows(logsRead)
+                    writer.writerow(logsData)
 
             startBtn = Button(startProcessWin, height=2, width=10, text="Start", font='Arial 15 bold',
                               fg="Black", bg='#75CC3D', relief=RAISED,
@@ -915,20 +940,34 @@ def main():
     # Logs Update
     # --------------------------------------------------------------
     def logsUpdate():
-        loveCageLogsFile = path + 'logs/' + loveCageQRcode + '.csv'
-        if os.path.exists(loveCageLogsFile) and startFlag:
-            logsRead = list(csv.reader(open(loveCageLogsFile)))
+        if startFlag:
+            elapsedTime = float((time.time() - startTime))
+            elapsedMin = elapsedTime / 10.0
 
-            if len(logsRead) > 1:
-                logsRead.pop()
+            actualtimeLimitTb.delete(0, END)
+            actualtimeLimitTb.insert(0, str(int(elapsedMin)))
 
-            logsData[4] = str(flyCount)
-            logsData[5] = str(flyCount)
+            actualfliesPerTimeTb.delete(0, END)
+            actualfliesPerTimeTb.insert(0, str(flyCount))
 
-            with open(loveCageLogsFile, 'w', encoding='UTF8', newline='') as logs:
-                writer = csv.writer(logs)
-                writer.writerows(logsRead)
-                writer.writerow(logsData)
+            # if elapsedMin - float(newSettingsData[1]) > 0:
+            #     print('elapsedTime', datetime.now())
+            #     stop()
+
+            loveCageLogsFile = path + 'logs/' + loveCageQRcode + '.csv'
+            if os.path.exists(loveCageLogsFile):
+                logsRead = list(csv.reader(open(loveCageLogsFile)))
+
+                if len(logsRead) > 1:
+                    logsRead.pop()
+
+                logsData[4] = str(flyCount)
+                logsData[5] = str(flyCount)
+
+                with open(loveCageLogsFile, 'w', encoding='UTF8', newline='') as logs:
+                    writer = csv.writer(logs)
+                    writer.writerows(logsRead)
+                    writer.writerow(logsData)
 
         root.after(1, logsUpdate)
 
