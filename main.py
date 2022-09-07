@@ -37,7 +37,6 @@ darkCageQRcode = 'DC1'
 startFlag = 0
 loveCageFlag = 0
 darkCageFlag = 0
-serialCallback = 0
 noOfFliesPerMinTimer = ''
 logsData = ['', '', '', '', '', '']
 logsHeader = ['Date', 'ID of Dark Cage', 'Start Time of Dark Cage', 'End Time of Dark Cage',
@@ -153,7 +152,6 @@ def main():
     root.wm_geometry("800x480+0+0")  # x,y+origin x+ origin y
     root.resizable(0, 0)
     root.title("Swiss Federal Institute of Aquatic Science and Technology")
-    # resp = requests.get(url, stream=True)
 
     # --------------------------------------------------------------
     # Images
@@ -408,24 +406,6 @@ def main():
         fliesPerLoveCageTb.place(x=650, y=50)
         fliesPerLoveCageTb.bind("<Button-1>", lambda e: fliesPerLoveCageKeyboard())
         fliesPerLoveCageTb.insert(0, newSettingsData[3])
-
-        # --------------------------------------------------------------
-        # Time Interval
-        # --------------------------------------------------------------
-        # def timeIntervalKeyboard():
-        #     global entry
-        #     
-        #     entry = timeIntervalTb
-        #     keypad("350", "180")
-        #
-        # timeIntervalLb = Label(settinWin, height=2, width=20, text="Time Interval\n(Seconds)", anchor=NW,
-        #                        font="Arial 10 bold")
-        # timeIntervalLb.place(x=10, y=300)
-        #
-        # timeIntervalTb = Entry(settinWin, width=10, font='13')
-        # timeIntervalTb.place(x=160, y=300)
-        # timeIntervalTb.bind("<Button-1>", lambda e: timeIntervalKeyboard())
-        # timeIntervalTb.insert(0, '100')  
 
         # --------------------------------------------------------------
         # Other Parameters
@@ -745,7 +725,7 @@ def main():
         # Stop Button
         # --------------------------------------------------------------
         def stop():
-            global count, startFlag, serialCallback
+            global count, startFlag
 
             print("Stop")
             startFlag = 0
