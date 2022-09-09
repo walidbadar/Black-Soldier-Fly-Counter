@@ -587,13 +587,13 @@ def main():
             actualfliesPerLoveCageTb.delete(0, END)
             actualfliesPerLoveCageTb.insert(0, str(flyCount))
 
-            if int(actualfliesPerDarkCageTb.get()) >= int(newSettingsData[0]):
-                print("No. of Flies per Dark Cage are Collected")
-                # stop()
-
-            if int(actualfliesPerLoveCageTb.get()) >= int(newSettingsData[3]):
-                print("No. of Flies per Love Cage are Collected")
-                # stop()
+            # if int(actualfliesPerDarkCageTb.get()) >= int(newSettingsData[0]):
+            #     print("No. of Flies per Dark Cage are Collected")
+            #     stop()
+            # 
+            # if int(actualfliesPerLoveCageTb.get()) >= int(newSettingsData[3]):
+            #     print("No. of Flies per Love Cage are Collected")
+            #     stop()
 
             startProcessWin.after(10, flyCountUpdate)
 
