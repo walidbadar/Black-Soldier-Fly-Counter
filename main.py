@@ -873,7 +873,7 @@ def main():
                              command=lambda: process())
             nextBtn.place(x=400, y=350)
 
-            # stop()
+            stop()
             startProcessWin.destroy()
 
         fillDarkCageBtn = Button(startProcessWin, height=2, width=10, text="Next\nDark Cage", font='Arial 15 bold',
