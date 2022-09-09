@@ -732,11 +732,10 @@ def main():
 
             else:
                 print("Creating Logs File")
-                if os.path.exists(loveCageLogsFile):
-                    with open(loveCageLogsFile, 'w', encoding='UTF8', newline='') as logs:
-                        writer = csv.writer(logs)
-                        writer.writerow(logsHeader)
-                        writer.writerow(logsData)
+                with open(loveCageLogsFile, 'w', encoding='UTF8', newline='') as logs:
+                    writer = csv.writer(logs)
+                    writer.writerow(logsHeader)
+                    writer.writerow(logsData)
 
             stopBtn = Button(startProcessWin, height=2, width=10, text="Stop", font='Arial 15 bold',
                              fg="Black", bg='Red', relief=RAISED,
