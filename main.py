@@ -14,29 +14,29 @@ from datetime import datetime
 from tkinter import *
 from pyzbar import pyzbar
 
-if os.name == 'nt':
-    comPort = 'COM4'
-    path = 'D:/Softwares/Waleed Docs/Projects/Freelancing/Fiverr/magnetofix (Stefan)/Fly Counter/'
-    url = "http://192.168.1.4:8080/shot.jpg"
+# if os.name == 'nt':
+#     comPort = 'COM4'
+#     path = 'D:/Softwares/Waleed Docs/Projects/Freelancing/Fiverr/magnetofix (Stefan)/Fly Counter/'
+#     url = "http://192.168.1.4:8080/shot.jpg"
 
-else:
-    comPort = "/dev/ttyUSB0"
-    path = '/home/pi/flyCounter/'
+# else:
+comPort = "/dev/ttyUSB0"
+path = '/home/pi/flyCounter/'
 
-    # --------------------------------------------------------------
-    # GPIO Setup
-    # ---------------------------------------------------------------
-    import RPi.GPIO as GPIO
+# --------------------------------------------------------------
+# GPIO Setup
+# ---------------------------------------------------------------
+import RPi.GPIO as GPIO
 
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setwarnings(False)
-    GPIO.cleanup()
-    GPIO.setup(19, GPIO.OUT, initial=GPIO.LOW)  # Indicator LED
-    GPIO.setup(11, GPIO.OUT, initial=GPIO.LOW)  # Servo motor for cage agitation
-    GPIO.setup(10, GPIO.OUT, initial=GPIO.LOW)  # Direction of the stepper motor of the gate
-    GPIO.setup(9, GPIO.OUT, initial=GPIO.LOW)  # Stepper motor of the gate
-    GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Upper switch key to stop the opening gate
-    GPIO.setup(2, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Lower switch key to stop the closing gate
+GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
+GPIO.cleanup()
+GPIO.setup(19, GPIO.OUT, initial=GPIO.LOW)  # Indicator LED
+GPIO.setup(11, GPIO.OUT, initial=GPIO.LOW)  # Servo motor for cage agitation
+GPIO.setup(10, GPIO.OUT, initial=GPIO.LOW)  # Direction of the stepper motor of the gate
+GPIO.setup(9, GPIO.OUT, initial=GPIO.LOW)  # Stepper motor of the gate
+GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Upper switch key to stop the opening gate
+GPIO.setup(2, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Lower switch key to stop the closing gate
 
 # --------------------------------------------------------------
 # Global Variables
@@ -79,8 +79,8 @@ def noOfFliesPerMin():
 
     else:
         noOfFliesPerMinTimer.cancel()
-        noOfFliesPerMinTimer = threading.Timer(60, noOfFliesPerMin)
-        noOfFliesPerMinTimer.start()
+        # noOfFliesPerMinTimer = threading.Timer(60, noOfFliesPerMin)
+        # noOfFliesPerMinTimer.start()
 
     preFlyCount = flyCount
 
