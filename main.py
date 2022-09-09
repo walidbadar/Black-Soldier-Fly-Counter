@@ -1,9 +1,18 @@
 # import the necessary packages
+import cv2
+import requests
+import binascii
+import csv
+import io
+import math
+import os
+import serial
+import shutil
+import threading
+import time
+from datetime import datetime
 from tkinter import *
 from pyzbar import pyzbar
-from datetime import datetime
-import cv2, requests
-import shutil, time, serial, binascii, threading, math, io, os, csv
 
 if os.name == 'nt':
     comPort = 'COM4'
@@ -66,11 +75,11 @@ def noOfFliesPerMin():
 
     if flyCountDiff < int(newSettingsData[2]):
         print('No Fly Detected within 1 min', datetime.now())
-        stop()
+        # stop()
 
     else:
         noOfFliesPerMinTimer.cancel()
-        noOfFliesPerMinTimer = threading.Timer(10, noOfFliesPerMin)
+        noOfFliesPerMinTimer = threading.Timer(60, noOfFliesPerMin)
         noOfFliesPerMinTimer.start()
 
     preFlyCount = flyCount
@@ -708,8 +717,8 @@ def main():
             startTime = time.time()
             print('startTime', datetime.now())
             threading.Thread(target=read_serial_packet).start()
-            noOfFliesPerMinTimer = threading.Timer(10, noOfFliesPerMin)
-            noOfFliesPerMinTimer.start()
+            noOfFliesPerMinTimer = threading.Timer(60, noOfFliesPerMin)
+            # noOfFliesPerMinTimer.start()
 
             logsData[0] = str(datetime.now())[:10]
             logsData[1] = darkCageQRcode
@@ -900,7 +909,7 @@ def main():
             global elapsedMin
             if startFlag:
                 elapsedTime = float((time.time() - startTime))
-                elapsedMin = elapsedTime / 10.0
+                elapsedMin = elapsedTime / 60.0
 
                 actualtimeLimitTb.delete(0, END)
                 actualtimeLimitTb.insert(0, str(int(elapsedMin)))
