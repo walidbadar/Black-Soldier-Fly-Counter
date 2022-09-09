@@ -590,7 +590,7 @@ def main():
             # if int(actualfliesPerDarkCageTb.get()) >= int(newSettingsData[0]):
             #     print("No. of Flies per Dark Cage are Collected")
             #     stop()
-            # 
+            #
             # if int(actualfliesPerLoveCageTb.get()) >= int(newSettingsData[3]):
             #     print("No. of Flies per Love Cage are Collected")
             #     stop()
@@ -732,10 +732,11 @@ def main():
 
             else:
                 print("Creating Logs File")
-                with open(loveCageLogsFile, 'w', encoding='UTF8', newline='') as logs:
-                    writer = csv.writer(logs)
-                    writer.writerow(logsHeader)
-                    writer.writerow(logsData)
+                if os.path.exists(loveCageLogsFile):
+                    with open(loveCageLogsFile, 'w', encoding='UTF8', newline='') as logs:
+                        writer = csv.writer(logs)
+                        writer.writerow(logsHeader)
+                        writer.writerow(logsData)
 
             stopBtn = Button(startProcessWin, height=2, width=10, text="Stop", font='Arial 15 bold',
                              fg="Black", bg='Red', relief=RAISED,
