@@ -87,7 +87,7 @@ def noOfFliesPerMin():
 # --------------------------------------------------------------
 # Serial Data Thread
 # --------------------------------------------------------------
-sensor = serial.Serial(comPort, baudrate="115200", timeout=0.001)
+sensor = serial.Serial(comPort, baudrate="115200", timeout=0.0001)
 
 def read_serial_packet():
     global flyCount, preBeam48, preBeam48Join
@@ -103,13 +103,14 @@ def read_serial_packet():
 
     while True:
         if startFlag:
-            # sensor.write(b'B')  # Experimental Case
+            sensor.write(b'B')  # Experimental Case
 
             if sensor.inWaiting() > 6:
                 sensorData = sensor.read(7)
                 # sensor.reset_input_buffer()  # Experimental Case
-                # sensor.write(b'0')  # Experimental Case
-                # sensor.flush()  # Experimental Case
+                sensor.write(b'0')  # Experimental Case
+                sensor.flush()  # Experimental Case
+                time.sleep(0.0001)
                 print("sensorData: ", sensorData)
 
                 Byte1 = int(binascii.hexlify(sensorData)[0:2], 16)
@@ -161,7 +162,10 @@ def read_serial_packet():
                                 noOfFly = round(flyCountRound)
                             flyCount = noOfFly + flyCount
 
-                        # print("flyCount: ", flyCount)
+                            print("noOfFly: ", noOfFly)
+
+                        print("NoOfbeamPerFly: ", NoOfbeamPerFly)
+                        print("flyCount: ", flyCount)
 
         else:
             # sensor.close()  # Experimental Case
@@ -761,8 +765,7 @@ def main():
             sensor.write(b'0')
             sensor.flush()
             sensor.close()
-            print(noOfFliesPerMinTimer)
-            print(type(noOfFliesPerMinTimer))
+
             if noOfFliesPerMinTimer != '':
                 noOfFliesPerMinTimer.cancel()
 
@@ -905,38 +908,38 @@ def main():
         # --------------------------------------------------------------
         # Logs Update
         # --------------------------------------------------------------
-        # def logsUpdate():
-        #     global elapsedMin
-        #     if startFlag:
-        #         elapsedTime = float((time.time() - startTime))
-        #         elapsedMin = elapsedTime / 60.0
-        #
-        #         actualtimeLimitTb.delete(0, END)
-        #         actualtimeLimitTb.insert(0, str(int(elapsedMin)))
-        #         # print('elapsedMin Time: ', datetime.now())
-        #
-        #         # if elapsedMin - float(newSettingsData[1]) > 0:
-        #         #     print('elapsedTime', datetime.now())
-        #         #     stop()
-        #
-        #         loveCageLogsFile = path + 'logs/' + loveCageQRcode + '.csv'
-        #         if os.path.exists(loveCageLogsFile):
-        #             logsRead = list(csv.reader(open(loveCageLogsFile)))
-        #
-        #             if len(logsRead) > 1:
-        #                 logsRead.pop()
-        #
-        #             logsData[4] = str(flyCount)
-        #             logsData[5] = str(flyCount)
-        #
-        #             with open(loveCageLogsFile, 'w', encoding='UTF8', newline='') as logs:
-        #                 writer = csv.writer(logs)
-        #                 writer.writerows(logsRead)
-        #                 writer.writerow(logsData)
-        #
-        #     startProcessWin.after(1, logsUpdate)
-        #
-        # startProcessWin.after(1, logsUpdate)
+        def logsUpdate():
+            global elapsedMin
+            if startFlag:
+                elapsedTime = float((time.time() - startTime))
+                elapsedMin = elapsedTime / 60.0
+
+                actualtimeLimitTb.delete(0, END)
+                actualtimeLimitTb.insert(0, str(int(elapsedMin)))
+                # print('elapsedMin Time: ', datetime.now())
+
+                # if elapsedMin - float(newSettingsData[1]) > 0:
+                #     print('elapsedTime', datetime.now())
+                #     stop()
+
+                loveCageLogsFile = path + 'logs/' + loveCageQRcode + '.csv'
+                if os.path.exists(loveCageLogsFile):
+                    logsRead = list(csv.reader(open(loveCageLogsFile)))
+
+                    if len(logsRead) > 1:
+                        logsRead.pop()
+
+                    logsData[4] = str(flyCount)
+                    logsData[5] = str(flyCount)
+
+                    with open(loveCageLogsFile, 'w', encoding='UTF8', newline='') as logs:
+                        writer = csv.writer(logs)
+                        writer.writerows(logsRead)
+                        writer.writerow(logsData)
+
+            startProcessWin.after(10, logsUpdate)
+
+        startProcessWin.after(10, logsUpdate)
 
         # --------------------------------------------------------------
         # End Button
