@@ -555,7 +555,8 @@ def main():
 
             else:
                 os.system("sudo umount /dev/sdb1")
-                os.system("sudo mkdir /media/usb")
+                if not os.path.isdir("/media/usb"):
+                    os.system("sudo mkdir /media/usb")
                 os.system("sudo mount /dev/sdb1 /media/usb")
                 os.system("sudo cp /home/pi/flyCounter/logs/* /media/usb")
 
