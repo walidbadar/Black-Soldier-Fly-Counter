@@ -10,6 +10,8 @@ import serial
 import shutil
 import threading
 import time
+import re
+import subprocess
 from datetime import datetime
 from tkinter import *
 from pyzbar import pyzbar
@@ -45,8 +47,11 @@ noOfFly = 0
 flyCount = 0
 preFlyCount = 0
 NoOfbeamPerFly = 0
+beam48Split = []
+beam48List = []
+preBeam48List = []
 preBeam48 = ''
-preBeam48Join = ''
+preBeam48Value = ''
 QRcode = ''
 loveCageQRcode = 'LC1'
 darkCageQRcode = 'DC1'
@@ -79,7 +84,7 @@ def noOfFliesPerMin():
 
     else:
         noOfFliesPerMinTimer.cancel()
-        # noOfFliesPerMinTimer = threading.Timer(60, noOfFliesPerMin)
+        noOfFliesPerMinTimer = threading.Timer(60, noOfFliesPerMin)
         # noOfFliesPerMinTimer.start()
 
     preFlyCount = flyCount
@@ -89,9 +94,10 @@ def noOfFliesPerMin():
 # --------------------------------------------------------------
 sensor = serial.Serial(comPort, baudrate="115200", timeout=0.0001)
 
-def read_serial_packet():
-    global flyCount, preBeam48, preBeam48Join
+def read_serial_packet(flyCountRound=0):
+    global flyCount, beam48Split, preBeam48, preBeam48Value
     print("Started Serial COM")
+
 
     if newSettingsData[4] != '':
         NoOfbeamPerFly = int(newSettingsData[4])
@@ -107,7 +113,6 @@ def read_serial_packet():
 
             if sensor.inWaiting() > 6:
                 sensorData = sensor.read(7)
-                # sensor.reset_input_buffer()  # Experimental Case
                 sensor.write(b'0')  # Experimental Case
                 sensor.flush()  # Experimental Case
                 time.sleep(0.0001)
@@ -136,33 +141,63 @@ def read_serial_packet():
                         0 <= beam[6] <= 127):
                     print("Perfect beam")
 
-                    if preBeam48Join != '':
-                        preBeam48 = preBeam48Join.getvalue()
+                    if preBeam48Value != '':
+                        preBeam48 = preBeam48Value.getvalue()
+                        print('preBeam48', preBeam48)
 
                     beamBin = [Byte1bin, Byte2bin, Byte3bin, Byte4bin, Byte5bin, Byte6bin, Byte7bin]
                     beam48 = Byte1bin + Byte2bin + Byte3bin + Byte4bin + Byte5bin + Byte6bin + Byte7bin
-                    beam48Split = beam48.split('0')
-                    beam48Split = [zero for zero in beam48Split if zero]
-                    beam48Join = ''.join(beamBin)
-                    print('beam48Join', beam48Join)
-                    print("beam48Split: ", beam48Split)
+                    print('beam48', beam48)
 
-                    preBeam48Join = io.StringIO()
-                    preBeam48Join.write(str(beam48Join))
+                    preBeam48Value = io.StringIO()
+                    preBeam48Value.write(str(beam48))
 
-                    if preBeam48 == str(beam48Join):  # Experimental Case
+                    if beam48 == preBeam48:  # Experimental Case
                         print("Same")
                     else:
                         print("Changed")
+                        if str(preBeam48) == '':
+                            beam48Split = beam48.split('0')
+                            beam48Split = [zero for zero in beam48Split if zero]
+
+                        else:
+                            beam48Split = []
+                            beam48List = []
+                            preBeam48List = []
+
+                            for x in range(len(preBeam48)):
+                                preBeam48List.append(int(preBeam48[x]))
+                            print(re.sub('[\'\[\]\, ]', '', str(preBeam48List)))
+
+                            for x in range(len(beam48)):
+                                beam48List.append(int(beam48[x]))
+                            print(re.sub('[\'\[\]\, ]', '', str(beam48List)))
+
+                            for x in range(len(beam48List)):
+                                if (beam48List[x] - preBeam48List[x]) >= 0:
+                                    beam48Split.append(beam48List[x] - preBeam48List[x])
+                                else:
+                                    beam48Split.append(0)
+
+                            beam48Split = re.sub('[\'\[\]\, ]', '', str(beam48Split))
+                            print(beam48Split)
+                            print("len(beam48Split): ", len(beam48Split))
+                            beam48Split = beam48Split.split('0')
+                            beam48Split = [zero for zero in beam48Split if zero]
+                            print(beam48Split)
+                            print("len(beam48Split): ", len(beam48Split))
+
                         for x in range(len(beam48Split)):
                             flyCountRound = len(beam48Split[x]) / NoOfbeamPerFly
+
                             if (float(flyCountRound) % 1) > 0:
                                 noOfFly = math.ceil(flyCountRound)
                             else:
                                 noOfFly = round(flyCountRound)
+
                             flyCount = noOfFly + flyCount
 
-                            print("noOfFly: ", noOfFly)
+                            print("flyCountRound: ", flyCountRound)
 
                         print("NoOfbeamPerFly: ", NoOfbeamPerFly)
                         print("flyCount: ", flyCount)
@@ -288,12 +323,15 @@ def main():
             print('newLoveCageQRcodeData', newLoveCageQRcodeData)
             print('Lenght of newLoveCageQRcodeData', len(newLoveCageQRcodeData))
 
-            resp = requests.get(url, stream=True)
-            local_file = open(path + 'images/' + 'local_image.jpg', 'wb')
-            resp.raw.decode_content = True
-            shutil.copyfileobj(resp.raw, local_file)
+            if os.name == 'nt':
+                resp = requests.get(url, stream=True)
+                local_file = open(path + 'images/' + 'local_image.jpg', 'wb')
+                resp.raw.decode_content = True
+                shutil.copyfileobj(resp.raw, local_file)
 
-            # subprocess.Popen("libcamera-still -r -o /home/pi/flyCounter/local_image.jpg", shell=True)
+            else:
+                subprocess.Popen("libcamera-still -r -o /home/pi/flyCounter/local_image.jpg", shell=True)
+
             image = cv2.imread(path + 'images/' + 'local_image.jpg', 0)
             barcodes = pyzbar.decode(image)
 
@@ -509,6 +547,24 @@ def main():
         shakingDurationTb.insert(0, newSettingsData[6])
 
         # --------------------------------------------------------------
+        # Download Button
+        # --------------------------------------------------------------
+        def downloadLogs():
+            if os.name == 'nt':
+                print("Download Logs")
+
+            else:
+                os.system("sudo umount /dev/sdb1")
+                os.system("sudo mkdir /media/usb")
+                os.system("sudo mount /dev/sdb1 /media/usb")
+                os.system("sudo cp /home/pi/flyCounter/logs/* /media/usb")
+
+        downloadBtn = Button(settinWin, height=2, width=20, text="Download Logs", font='Arial 15 bold',
+                         fg="Black", bg='#75CC3D', relief=RAISED,
+                         command=lambda: downloadLogs())
+        downloadBtn.place(x=100, y=350)
+
+        # --------------------------------------------------------------
         # Back Button
         # --------------------------------------------------------------
         def saveSettings():
@@ -528,9 +584,9 @@ def main():
             settinWin.destroy()
 
         backBtn = Button(settinWin, height=2, width=20, text="Back", font='Arial 15 bold',
-                         fg="Black", bg='#75CC3D', relief=RAISED,
+                         fg="Black", bg='#00A3FF', relief=RAISED,
                          command=lambda: saveSettings())
-        backBtn.place(x=250, y=350)
+        backBtn.place(x=400, y=350)
 
     def startProcess():
         global startProcessWin, newSettingsData, flyCountTb, actualtimeLimitTb, actualfliesPerTimeTb, stop
@@ -830,12 +886,15 @@ def main():
                     newDarkCageQRcodeData.append(darkCageQRcodeData)
                 print(newDarkCageQRcodeData)
 
-                resp = requests.get(url, stream=True)
-                local_file = open(path + 'images/' + 'local_image.jpg', 'wb')
-                resp.raw.decode_content = True
-                shutil.copyfileobj(resp.raw, local_file)
+                if os.name == 'nt':
+                    resp = requests.get(url, stream=True)
+                    local_file = open(path + 'images/' + 'local_image.jpg', 'wb')
+                    resp.raw.decode_content = True
+                    shutil.copyfileobj(resp.raw, local_file)
 
-                # subprocess.Popen("libcamera-still -r -o /home/pi/flyCounter/local_image.jpg", shell=True)
+                else:
+                    subprocess.Popen("libcamera-still -r -o /home/pi/flyCounter/local_image.jpg", shell=True)
+
                 image = cv2.imread(path + 'images/' + 'local_image.jpg', 0)
                 barcodes = pyzbar.decode(image)
 
