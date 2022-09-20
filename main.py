@@ -37,8 +37,8 @@ else:
     GPIO.setup(11, GPIO.OUT, initial=GPIO.LOW)  # Servo motor for cage agitation
     GPIO.setup(10, GPIO.OUT, initial=GPIO.LOW)  # Direction of the stepper motor of the gate
     GPIO.setup(9, GPIO.OUT, initial=GPIO.LOW)  # Stepper motor of the gate
-    GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Upper switch key to stop the opening gate
-    GPIO.setup(2, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Lower switch key to stop the closing gate
+    GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Upper switch key to stop the gate opening
+    GPIO.setup(2, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Lower switch key to stop the gate closing
 
 # --------------------------------------------------------------
 # Global Variables
@@ -47,9 +47,6 @@ noOfFly = 0
 flyCount = 0
 preFlyCount = 0
 NoOfbeamPerFly = 0
-beam48Split = []
-beam48List = []
-preBeam48List = []
 preBeam48 = ''
 preBeam48Value = ''
 QRcode = ''
@@ -95,9 +92,8 @@ def noOfFliesPerMin():
 sensor = serial.Serial(comPort, baudrate="115200", timeout=0.0001)
 
 def read_serial_packet(flyCountRound=0):
-    global flyCount, beam48Split, preBeam48, preBeam48Value
+    global flyCount, preBeam48, preBeam48Value
     print("Started Serial COM")
-
 
     if newSettingsData[4] != '':
         NoOfbeamPerFly = int(newSettingsData[4])
@@ -115,7 +111,7 @@ def read_serial_packet(flyCountRound=0):
                 sensorData = sensor.read(7)
                 sensor.write(b'0')  # Experimental Case
                 sensor.flush()  # Experimental Case
-                time.sleep(0.0001)
+                time.sleep(0.001)
                 print("sensorData: ", sensorData)
 
                 Byte1 = int(binascii.hexlify(sensorData)[0:2], 16)
@@ -162,30 +158,40 @@ def read_serial_packet(flyCountRound=0):
 
                         else:
                             beam48Split = []
+                            newBeam48Split = []
                             beam48List = []
                             preBeam48List = []
 
-                            for x in range(len(preBeam48)):
+                            for x in range(48):
                                 preBeam48List.append(int(preBeam48[x]))
                             print(re.sub('[\'\[\]\, ]', '', str(preBeam48List)))
 
-                            for x in range(len(beam48)):
+                            for x in range(48):
                                 beam48List.append(int(beam48[x]))
                             print(re.sub('[\'\[\]\, ]', '', str(beam48List)))
 
-                            for x in range(len(beam48List)):
-                                if (beam48List[x] - preBeam48List[x]) >= 0:
-                                    beam48Split.append(beam48List[x] - preBeam48List[x])
+                            for x in range(48):
+                                if (beam48List[x] - preBeam48List[x])> 0:
+                                    beam48Split.append((beam48List[x] - preBeam48List[x]))
                                 else:
                                     beam48Split.append(0)
 
+                            beam48List = re.sub('[\'\[\]\, ]', '', str(beam48List))
+                            beam48List = beam48List.split('0')
+                            beam48List = [zero for zero in beam48List if zero]
+
                             beam48Split = re.sub('[\'\[\]\, ]', '', str(beam48Split))
                             print(beam48Split)
-                            print("len(beam48Split): ", len(beam48Split))
                             beam48Split = beam48Split.split('0')
                             beam48Split = [zero for zero in beam48Split if zero]
+                            print(beam48List)
                             print(beam48Split)
-                            print("len(beam48Split): ", len(beam48Split))
+
+                            for x in range(len(beam48Split)):
+                                print(len(beam48List[x]) - len(beam48Split[x]))
+                                if (len(beam48List[x]) - len(beam48Split[x])) >= NoOfbeamPerFly:
+                                    beam48Split.pop(x)
+                            print(beam48Split)
 
                         for x in range(len(beam48Split)):
                             flyCountRound = len(beam48Split[x]) / NoOfbeamPerFly
@@ -1046,7 +1052,6 @@ def main():
 
     root.update()
     root.mainloop()
-
 
 if __name__ == "__main__":
     main()
