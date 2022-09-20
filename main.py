@@ -337,7 +337,7 @@ def main():
                 shutil.copyfileobj(resp.raw, local_file)
 
             else:
-                subprocess.Popen("libcamera-still -r -o /home/pi/flyCounter/images/local_image.jpg", shell=True)
+                os.system("libcamera-still -r -o /home/pi/flyCounter/images/local_image.jpg", shell=True)
 
             image = cv2.imread(path + 'images/' + 'local_image.jpg', 0)
             barcodes = pyzbar.decode(image)
@@ -901,7 +901,7 @@ def main():
                     shutil.copyfileobj(resp.raw, local_file)
 
                 else:
-                    subprocess.Popen("libcamera-still -r -o /home/pi/flyCounter/images/local_image.jpg", shell=True)
+                    os.system("libcamera-still -r -o /home/pi/flyCounter/images/local_image.jpg", shell=True)
 
                 image = cv2.imread(path + 'images/' + 'local_image.jpg', 0)
                 barcodes = pyzbar.decode(image)
