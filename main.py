@@ -189,6 +189,7 @@ def read_serial_packet(flyCountRound=0):
 
                             for x in range(len(beam48Split)):
                                 print(len(beam48List[x]) - len(beam48Split[x]))
+                                print('NoOfbeamPerFly', NoOfbeamPerFly)
                                 if (len(beam48List[x]) - len(beam48Split[x])) >= NoOfbeamPerFly:
                                     beam48Split.pop(x)
                             print(beam48Split)
